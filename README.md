@@ -3,6 +3,8 @@
 **Live app:** https://frontend-gse2.vercel.app/
 **API:** https://ai-task-manager-ow0y.onrender.com
 
+![App screenshot](https://github.com/dhanibaksh777-byte/smart-schedule-optimizer-backend/blob/328598c708b364ab02e5d88a4c6be5184bfb024f/Screenshot%202026-08-04%20021831.png?raw=true)
+
 ## The problem
 
 Task managers make you fill out a form for every single task — pick a priority from a dropdown, click through a calendar to set a due date, then finally type what the task actually is. For something you're jotting down in ten seconds between meetings, that's too much friction. Most people either skip the priority/date fields entirely or abandon the task manager altogether.
