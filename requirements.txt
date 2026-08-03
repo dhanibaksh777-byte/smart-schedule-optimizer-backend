@@ -8,3 +8,4 @@ bcrypt
 pydantic
 pydantic-settings
 groq
+email-validator
