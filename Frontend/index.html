@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parsed — natural language task parser</title>
+<style>
+  :root{
+    --bg: #0F1115;
+    --surface: #171A21;
+    --surface-2: #1E222B;
+    --line: #2A2F3A;
+    --text: #E8E9ED;
+    --text-dim: #8B909C;
+    --text-faint: #565B68;
+    --high: #E8664A;
+    --medium: #E8A73E;
+    --low: #4FAE7E;
+    --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  ::selection{ background: var(--medium); color: #14161B; }
+
+  /* ---------- shell ---------- */
+  .wrap{
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 56px 24px 120px;
+  }
+
+  header.top{
+    display:flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .brand{
+    font-family: var(--mono);
+    font-size: 14px;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    display:flex;
+    align-items:center;
+    gap: 8px;
+  }
+  .brand .dot{
+    width:7px;height:7px;border-radius:50%;
+    background: var(--low);
+    box-shadow: 0 0 8px var(--low);
+  }
+
+  #authStatus{
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--text-faint);
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  #authStatus button{
+    background:none;border:1px solid var(--line);color:var(--text-dim);
+    font-family:var(--mono); font-size:11px; padding:4px 9px; border-radius:5px;
+    cursor:pointer;
+  }
+  #authStatus button:hover{ border-color: var(--text-dim); color:var(--text); }
+
+  h1.hero{
+    font-size: clamp(30px, 5vw, 42px);
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 12px;
+  }
+  h1.hero .accent{ color: var(--text-faint); font-weight: 500; }
+
+  p.sub{
+    color: var(--text-dim);
+    font-size: 15.5px;
+    line-height: 1.6;
+    max-width: 52ch;
+    margin: 0 0 44px;
+  }
+
+  /* ---------- auth panel ---------- */
+  .panel{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 22px;
+    margin-bottom: 28px;
+  }
+  .panel h2{
+    font-size: 12.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    margin: 0 0 16px;
+    font-weight: 600;
+    font-family: var(--mono);
+  }
+  .tabs{ display:flex; gap:4px; margin-bottom:18px; }
+  .tabs button{
+    flex:1;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    padding: 8px 10px;
+    border-radius: 7px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .tabs button.active{
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+
+  .field{ margin-bottom: 12px; }
+  .field label{
+    display:block;
+    font-size: 11.5px;
+    color: var(--text-faint);
+    margin-bottom: 6px;
+    font-family: var(--mono);
+    letter-spacing: 0.03em;
+  }
+  .field input{
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-family: var(--sans);
+    outline: none;
+    transition: border-color .15s ease;
+  }
+  .field input:focus{ border-color: var(--text-dim); }
+  .field input::placeholder{ color: var(--text-faint); }
+
+  .btn-primary{
+    width: 100%;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    padding: 11px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: opacity .15s ease;
+    font-family: var(--sans);
+  }
+  .btn-primary:hover{ opacity: 0.85; }
+  .btn-primary:disabled{ opacity: 0.4; cursor: not-allowed; }
+
+  .formMsg{
+    font-family: var(--mono);
+    font-size: 12px;
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    display:none;
+  }
+  .formMsg.show{ display:block; }
+  .formMsg.err{ background: rgba(232,102,74,0.1); color: var(--high); border:1px solid rgba(232,102,74,0.25); }
+  .formMsg.ok{ background: rgba(79,174,126,0.1); color: var(--low); border:1px solid rgba(79,174,126,0.25); }
+
+  /* ---------- composer (the signature element) ---------- */
+  .composer{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 36px;
+  }
+  .composer-head{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .composer-head span{
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-faint);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .composer-body{ padding: 18px; }
+  .composer textarea{
+    width: 100%;
+    min-height: 84px;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.5;
+    font-family: var(--sans);
+    resize: vertical;
+    outline: none;
+  }
+  .composer textarea::placeholder{ color: var(--text-faint); }
+
+  .composer-title{
+    width:100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+    font-family: var(--sans);
+    padding: 0 0 12px;
+    margin-bottom: 12px;
+    outline: none;
+  }
+  .composer-title::placeholder{ color: var(--text-faint); font-weight: 400; }
+
+  .composer-foot{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    background: var(--surface-2);
+    gap: 12px;
+  }
+
+  .parse-btn{
+    background: var(--text);
+    color: var(--bg);
+    border:none;
+    padding: 9px 18px;
+    border-radius: 7px;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor:pointer;
+    font-family: var(--sans);
+    display:flex; align-items:center; gap:8px;
+    transition: opacity .15s ease;
+  }
+  .parse-btn:hover{ opacity:.85; }
+  .parse-btn:disabled{ opacity:.4; cursor:not-allowed; }
+
+  .parse-hint{
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-faint);
+  }
+
+  /* spinner */
+  .spin{
+    width:13px;height:13px;
+    border-radius:50%;
+    border: 2px solid rgba(15,17,21,0.25);
+    border-top-color: var(--bg);
+    animation: spin .7s linear infinite;
+    display:none;
+  }
+  .spin.on{ display:inline-block; }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  /* ---------- extraction receipt (signature moment) ---------- */
+  .receipt{
+    margin: 0 18px 18px;
+    border: 1px dashed var(--line);
+    border-radius: 9px;
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    display: none;
+    background: var(--bg);
+  }
+  .receipt.show{ display:block; }
+  .receipt-row{
+    display:flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    opacity: 0;
+    transform: translateY(4px);
+    animation: rise .35s ease forwards;
+  }
+  .receipt-row:nth-child(1){ animation-delay: .05s; }
+  .receipt-row:nth-child(2){ animation-delay: .18s; }
+  @keyframes rise{ to{ opacity:1; transform: translateY(0); } }
+  .receipt-row .k{ color: var(--text-faint); }
+  .receipt-row .v{ color: var(--text); font-weight: 600; }
+  .receipt-row .v.high{ color: var(--high); }
+  .receipt-row .v.medium{ color: var(--medium); }
+  .receipt-row .v.low{ color: var(--low); }
+
+  /* ---------- task list ---------- */
+  .list-head{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .list-head h2{
+    font-size: 12.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    font-family: var(--mono);
+    font-weight: 600;
+    margin:0;
+  }
+  .list-count{
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-faint);
+  }
+
+  .task{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+    transition: border-color .15s ease;
+  }
+  .task.high{ border-left-color: var(--high); }
+  .task.medium{ border-left-color: var(--medium); }
+  .task.low{ border-left-color: var(--low); }
+
+  .task-top{
+    display:flex;
+    justify-content: space-between;
+    align-items:flex-start;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+  .task-title{
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .task-title.done{ text-decoration: line-through; color: var(--text-faint); }
+
+  .task-content{
+    color: var(--text-dim);
+    font-size: 13.5px;
+    line-height: 1.5;
+    margin: 0 0 12px;
+  }
+
+  .task-meta{
+    display:flex;
+    align-items:center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .tag{
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  .tag.high{ background: rgba(232,102,74,0.12); color: var(--high); }
+  .tag.medium{ background: rgba(232,167,62,0.12); color: var(--medium); }
+  .tag.low{ background: rgba(79,174,126,0.12); color: var(--low); }
+
+  .due{
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+  .due.none::before{ content: "no due date"; }
+
+  .task-actions{
+    margin-left: auto;
+    display:flex;
+    gap: 6px;
+  }
+  .task-actions button{
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--text-faint);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 9px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .task-actions button:hover{ border-color: var(--text-dim); color: var(--text); }
+  .task-actions button.danger:hover{ border-color: var(--high); color: var(--high); }
+
+  .empty{
+    text-align:center;
+    padding: 48px 20px;
+    color: var(--text-faint);
+    font-family: var(--mono);
+    font-size: 13px;
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+  }
+
+  .gate{
+    text-align:center;
+    padding: 60px 20px;
+    color: var(--text-faint);
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  footer{
+    text-align:center;
+    margin-top: 60px;
+    color: var(--text-faint);
+    font-family: var(--mono);
+    font-size: 11.5px;
+  }
+  footer a{ color: var(--text-dim); }
+
+  @media (max-width: 480px){
+    .wrap{ padding: 36px 16px 100px; }
+    header.top{ flex-direction:column; align-items:flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand"><span class="dot"></span>parsed / task engine</div>
+    <div id="authStatus"></div>
+  </header>
+
+  <h1 class="hero">Say the task.<br><span class="accent">Skip the form.</span></h1>
+  <p class="sub">Write what needs to happen in plain language — priority and due date get pulled out for you. "Submit the report by next Friday, this is urgent" becomes structured data, no dropdowns required.</p>
+
+  <!-- API base config -->
+  <div class="panel" id="apiPanel">
+    <h2>API endpoint</h2>
+    <div class="field">
+      <label>Backend base URL</label>
+      <input type="text" id="apiBase" placeholder="https://your-backend.onrender.com" value="https://ai-task-manager-ow0y.onrender.com">
+    </div>
+  </div>
+
+  <!-- Auth panel -->
+  <div class="panel" id="authPanel">
+    <div class="tabs">
+      <button id="tabLogin" class="active">Log in</button>
+      <button id="tabRegister">Register</button>
+    </div>
+
+    <form id="loginForm">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="loginEmail" required placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="loginPassword" required placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn-primary">Log in</button>
+      <div class="formMsg" id="loginMsg"></div>
+    </form>
+
+    <form id="registerForm" style="display:none;">
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="regUsername" required placeholder="bilal123">
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="regEmail" required placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="regPassword" required placeholder="min 8 characters">
+      </div>
+      <button type="submit" class="btn-primary">Create account</button>
+      <div class="formMsg" id="registerMsg"></div>
+    </form>
+  </div>
+
+  <!-- App (hidden until logged in) -->
+  <div id="app" style="display:none;">
+
+    <div class="composer">
+      <div class="composer-head"><span>New task</span></div>
+      <div class="composer-body">
+        <input type="text" class="composer-title" id="taskTitle" placeholder="Short title (e.g. Submit client report)">
+        <textarea id="taskContent" placeholder="Describe it naturally — include timing and urgency if it matters. e.g. &quot;Get the invoice to accounting by tomorrow morning, it's blocking payroll&quot;"></textarea>
+      </div>
+      <div class="composer-foot">
+        <span class="parse-hint">priority + due date extracted automatically</span>
+        <button class="parse-btn" id="parseBtn">
+          <span class="spin" id="parseSpin"></span>
+          <span id="parseBtnLabel">Parse & add</span>
+        </button>
+      </div>
+      <div class="receipt" id="receipt">
+        <div class="receipt-row"><span class="k">priority</span><span class="v" id="rPriority">—</span></div>
+        <div class="receipt-row"><span class="k">due_date</span><span class="v" id="rDue">—</span></div>
+      </div>
+    </div>
+
+    <div class="list-head">
+      <h2>Tasks</h2>
+      <span class="list-count" id="taskCount">0 total</span>
+    </div>
+
+    <div id="taskList"></div>
+
+  </div>
+
+  <div class="gate" id="gate">Log in or register above to start parsing tasks.</div>
+
+  <footer>built for the Natural Language Task Parser API · FastAPI + Groq</footer>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const state = { token: null };
+
+  function apiBase(){ return $('apiBase').value.replace(/\/$/, ''); }
+
+  // ---------- tabs ----------
+  $('tabLogin').onclick = () => switchTab('login');
+  $('tabRegister').onclick = () => switchTab('register');
+  function switchTab(which){
+    const isLogin = which === 'login';
+    $('tabLogin').classList.toggle('active', isLogin);
+    $('tabRegister').classList.toggle('active', !isLogin);
+    $('loginForm').style.display = isLogin ? 'block' : 'none';
+    $('registerForm').style.display = isLogin ? 'none' : 'block';
+  }
+
+  function showMsg(el, text, ok){
+    el.textContent = text;
+    el.className = 'formMsg show ' + (ok ? 'ok' : 'err');
+  }
+
+  async function api(path, opts = {}){
+    const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+    if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
+    const res = await fetch(apiBase() + path, Object.assign({}, opts, { headers }));
+    let data = null;
+    try { data = await res.json(); } catch(e) {}
+    if (!res.ok){
+      const detail = data && data.detail ? (typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail)) : ('Request failed (' + res.status + ')');
+      throw new Error(detail);
+    }
+    return data;
+  }
+
+  // ---------- auth ----------
+  $('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('registerMsg');
+    try{
+      await api('/auth/Register', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: $('regUsername').value,
+          email: $('regEmail').value,
+          password: $('regPassword').value
+        })
+      });
+      showMsg(msg, 'Account created — log in above.', true);
+      switchTab('login');
+      $('loginEmail').value = $('regEmail').value;
+    }catch(err){
+      showMsg(msg, err.message, false);
+    }
+  });
+
+  $('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('loginMsg');
+    try{
+      const data = await api('/auth/Login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: $('loginEmail').value,
+          password: $('loginPassword').value
+        })
+      });
+      state.token = data.access_token;
+      enterApp($('loginEmail').value);
+      loadTasks();
+    }catch(err){
+      showMsg(msg, err.message, false);
+    }
+  });
+
+  function enterApp(email){
+    $('authPanel').style.display = 'none';
+    $('gate').style.display = 'none';
+    $('app').style.display = 'block';
+    $('authStatus').innerHTML = '<span>' + email + '</span><button id="logoutBtn">Log out</button>';
+    $('logoutBtn').onclick = () => location.reload();
+  }
+
+  // ---------- parse & create ----------
+  $('parseBtn').addEventListener('click', async () => {
+    const title = $('taskTitle').value.trim();
+    const content = $('taskContent').value.trim();
+    if (!title || !content) return;
+
+    $('parseBtn').disabled = true;
+    $('parseSpin').classList.add('on');
+    $('parseBtnLabel').textContent = 'Parsing…';
+    $('receipt').classList.remove('show');
+
+    try{
+      const task = await api('/task/Create-task', {
+        method: 'POST',
+        body: JSON.stringify({ title, content })
+      });
+
+      $('rPriority').textContent = task.priority || '—';
+      $('rPriority').className = 'v ' + (task.priority || '');
+      $('rDue').textContent = task.due_date ? formatDate(task.due_date) : 'none';
+      $('receipt').classList.add('show');
+
+      $('taskTitle').value = '';
+      $('taskContent').value = '';
+      loadTasks();
+    }catch(err){
+      alert('Could not parse task: ' + err.message);
+    }finally{
+      $('parseBtn').disabled = false;
+      $('parseSpin').classList.remove('on');
+      $('parseBtnLabel').textContent = 'Parse & add';
+    }
+  });
+
+  // ---------- list ----------
+  async function loadTasks(){
+    try{
+      const tasks = await api('/task/get-all-tasks');
+      renderTasks(tasks || []);
+    }catch(err){
+      $('taskList').innerHTML = '<div class="empty">Could not load tasks — ' + err.message + '</div>';
+    }
+  }
+
+  function formatDate(iso){
+    try{
+      const d = new Date(iso);
+      return d.toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' }) +
+             ' · ' + d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+    }catch(e){ return iso; }
+  }
+
+  function renderTasks(tasks){
+    $('taskCount').textContent = tasks.length + (tasks.length === 1 ? ' total' : ' total');
+    if (!tasks.length){
+      $('taskList').innerHTML = '<div class="empty">No tasks yet — add one above and watch it get parsed.</div>';
+      return;
+    }
+    $('taskList').innerHTML = tasks.map(t => {
+      const p = (t.priority || 'medium').toLowerCase();
+      return `
+        <div class="task ${p}" data-id="${t.id}">
+          <div class="task-top">
+            <p class="task-title ${t.status ? 'done' : ''}">${escapeHtml(t.title)}</p>
+          </div>
+          <p class="task-content">${escapeHtml(t.content)}</p>
+          <div class="task-meta">
+            <span class="tag ${p}">${p}</span>
+            <span class="due ${t.due_date ? '' : 'none'}">${t.due_date ? formatDate(t.due_date) : ''}</span>
+            <span class="task-actions">
+              <button class="danger delBtn">Delete</button>
+            </span>
+          </div>
+        </div>`;
+    }).join('');
+
+    document.querySelectorAll('.delBtn').forEach(btn => {
+      btn.onclick = async (e) => {
+        const id = e.target.closest('.task').dataset.id;
+        if (!confirm('Delete this task?')) return;
+        try{ await api('/task/delete-task/' + id, { method: 'DELETE' }); loadTasks(); }
+        catch(err){ alert(err.message); }
+      };
+    });
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+  }
+
+  switchTab('login');
+})();
+</script>
+
+</body>
+</html>
