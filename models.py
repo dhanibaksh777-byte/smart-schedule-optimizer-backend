@@ -1,5 +1,5 @@
 from database import Base 
-from sqlalchemy import Column,String,Integer,ForeignKey,Boolean
+from sqlalchemy import Column,String,Integer,ForeignKey,Boolean,DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime,timezone
 
@@ -19,7 +19,7 @@ class Task(Base):
     content = Column(String,nullable=True)
     status = Column(Boolean,default=False)
     priority = Column(String, default="medium", nullable=False)
-    created_at = Column(datetime(timezone=True),default=datetime.now(timezone.utc))
-    due_date = Column(datetime(timezone=True),nullable = True)
+    created_at = Column(DateTime(timezone=True),default=datetime.now(timezone.utc))
+    due_date = Column(DateTime(timezone=True),nullable = True)
     user_id = Column(Integer,ForeignKey("users.id"),nullable=False)
     owner = relationship("User",back_populates="tasks")

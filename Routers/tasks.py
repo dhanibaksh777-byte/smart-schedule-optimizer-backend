@@ -7,11 +7,12 @@ from llm_client import get_response
 from models import User
 from models import Task
 from pydantic import BaseModel
+from typing import Optional
 
 
 class UpdatedTask(BaseModel):
-    title : str 
-    content : str 
+    title : Optional[str] = None
+    content : Optional[str] 
 
 
 router = APIRouter(prefix="/task", tags=["Task Manager"])
@@ -22,9 +23,9 @@ def create_task(task : CreateTask,current_user : User = Depends(get_current_user
     try:
         ai_data = get_response(task.content)
     except ValueError as e:
-        raise HTTPException(status_Code = status.HTTP_500_INTERNAL_SERVER_ERROR,detail=e)
+        raise HTTPException(status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,detail=str(e))
     
-    new_task = Task(title = task.title,content = task.content,user_id = current_user.id,due_date = ai_data.Extracted_due_date,priority = ai_data.Extracted_priority)
+    new_task = Task(title = task.title,content = task.content,user_id = current_user.id,due_date = ai_data.due_date,priority = ai_data.priority)
     db.add(new_task)
     db.commit()
     db.refresh(new_task)
@@ -56,12 +57,12 @@ def update_task(task_id : int,updated : UpdatedTask ,current_user : User = Depen
             if updated.content is not None: 
                 task.content = updated.content
 
-                try:
-                      ai_data = get_response(updated.content)
-                      task.due_date = ai_data.extracted_due_date
-                      task.priority = ai_data.extracted_priority
+            try:
+                ai_data = get_response(updated.content)
+                task.due_date = ai_data.due_date
+                task.priority = ai_data.priority
 
-                except ValueError as e:
+            except ValueError as e:
                      raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
             db.add(task)
@@ -78,3 +79,4 @@ def delete_task(task_id : int, current_user : User = Depends(get_current_user),d
          db.delete(task)
          db.commit()
          return {"message" : "task deleted successfully!"}
+         

@@ -27,8 +27,8 @@ class CreateTask(BaseModel):
 
 
 class TaskAiExtraction(BaseModel):
-    Extracted_priority : str
-    Extracted_due_date : Optional[datetime] = None
+    priority: str
+    due_date: Optional[datetime] = None
 
 
 class TaskResponse(BaseModel):
