@@ -71,7 +71,7 @@ def register_user(user : CreateUser,db : Session = Depends(get_db)):
 def Login(user : UserLogin, db : Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user or not bcrypt.checkpw(user.password.encode("utf-8"),db_user.password.encode("utf-8")):
-        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND,detail="username password incorrect!",headers={"www-Authenticate" : "Bearer"})
+        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND,detail="email password incorrect!",headers={"www-Authenticate" : "Bearer"})
 
     token = create_token({"user_id" : db_user.id})
     return {"access_token" : token,"token_type" : "Bearer"}
