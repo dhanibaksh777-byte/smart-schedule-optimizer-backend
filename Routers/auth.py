@@ -1,4 +1,4 @@
-from fastapi import APIRouter,Depends,HTTPException,status
+from fastapi import APIRouter,Depends,HTTPException,status,Request
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User
@@ -7,6 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 from schemas import CreateUser,UserLogin,UserResponse
 from dotenv import load_dotenv
 from datetime import datetime,timezone,timedelta
+from core.rate_limit import limiter
 import json
 from json import JSONDecodeError
 import os
@@ -52,7 +53,8 @@ def get_current_user(token : str = Depends(Oauth2_scheme),db : Session = Depends
 router = APIRouter(prefix="/auth",tags=["Authentication"])
 
 @router.post("/Register",status_code=status.HTTP_201_CREATED,response_model=UserResponse)
-def register_user(user : CreateUser,db : Session = Depends(get_db)):
+@limiter.limit("3/minute")
+def register_user(request : Request,user : CreateUser,db : Session = Depends(get_db)):
     existing_username = db.query(User).filter(User.username == user.username).first()
     if existing_username:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="username already exists!")
@@ -68,30 +70,11 @@ def register_user(user : CreateUser,db : Session = Depends(get_db)):
     return new_user
 
 @router.post("/Login")
-def Login(user : UserLogin, db : Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def Login(request : Request,user : UserLogin, db : Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user or not bcrypt.checkpw(user.password.encode("utf-8"),db_user.password.encode("utf-8")):
-        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND,detail="email password incorrect!",headers={"www-Authenticate" : "Bearer"})
+        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST,detail="email password incorrect!",headers={"www-Authenticate" : "Bearer"})
 
     token = create_token({"user_id" : db_user.id})
     return {"access_token" : token,"token_type" : "Bearer"}
-
-    
-    
-
-      
-
-    
-    
-
-
-
-
-    
-    
-    
-        
-    
-    
-
-
