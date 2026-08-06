@@ -1,4 +1,4 @@
-from pydantic import BaseModel,EmailStr
+from pydantic import BaseModel,EmailStr,Field
 from datetime import datetime
 from typing import Optional,List
 
@@ -22,8 +22,8 @@ class UserResponse(BaseModel):
 
 
 class CreateTask(BaseModel):
-    title : str 
-    content : str 
+    title : str = Field(max_length=50)
+    content : str = Field(min_length=50,max_length=500)
 
 
 class TaskAiExtraction(BaseModel):
@@ -41,4 +41,4 @@ class TaskResponse(BaseModel):
     user_id : int
 
     class Config:
-        from_attrbutes = True
+        from_attributes = True
