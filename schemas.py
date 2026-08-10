@@ -42,3 +42,16 @@ class TaskResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ResetPasswordRequest(BaseModel):
+    token : str 
+    new_password : str = Field(min_length=8)
+
+
+    
+
+
+
+
+
