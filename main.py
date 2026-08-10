@@ -1,8 +1,14 @@
 from fastapi import FastAPI
 from database import engine,Base
 from Routers import auth,tasks
-import models
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from slowapi.middleware import SlowAPIMiddleware
+from core.rate_limit import limiter
 from fastapi.middleware.cors import CORSMiddleware
+import models
+
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -12,12 +18,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded,_rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
+
 
 app.include_router(auth.router)
 app.include_router(tasks.router)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://frontend-gse2.vercel.app/"],  
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
