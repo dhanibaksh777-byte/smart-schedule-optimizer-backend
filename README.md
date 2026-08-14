@@ -9,11 +9,7 @@
 
 Task managers make you fill out a form for every single task — pick a priority from a dropdown, click through a calendar to set a due date, then finally type what the task actually is. For something you're jotting down in ten seconds between meetings, that's too much friction. Most people either skip the priority/date fields entirely or abandon the task manager altogether.
 
-## The solution
 
-Type the task the way you'd say it out loud, and the details get pulled out for you.
-
-> "Submit the client report by next Friday, this is really urgent"
 
 becomes:
 
