@@ -31,17 +31,25 @@ No dropdowns. No date picker. You write one sentence, and the system figures out
 - **Your tasks stay yours** — every account is private; nobody else can see or touch your tasks
 - Understands relative time the way people actually talk — "tomorrow," "next Friday," "in two weeks" all resolve to the correct real-world date
 
+## Account security
+
+- **Email verification** — new accounts are unverified until you confirm via a link sent to your inbox
+- **Password reset** — forgot your password? A self-service, email-based reset flow gets you back in, no support ticket needed
+- **Rate limiting** — login, registration, and password-reset endpoints are throttled per IP to block brute-force and spam attempts
+- **Hashed passwords, JWT sessions** — passwords are never stored in plain text, and every session is backed by a signed, time-limited token
+
 ## How it's built
 
-- **Backend:** FastAPI + PostgreSQL, with secure account login (JWT-based sessions, hashed passwords)
+- **Backend:** FastAPI + PostgreSQL, with secure account login (JWT-based sessions, hashed passwords), schema migrations managed with Alembic
 - **AI layer:** Groq (Llama 3.3) reads the task description and extracts structured priority and due-date data
+- **Email:** Transactional emails (verification, password reset) sent via Resend
 - **Frontend:** A lightweight, single-page interface — no bloated dependencies, fast to load
 - **Hosting:** Backend on Render, database on Neon, frontend on Vercel
 
 ## Try it
 
 1. Open the [live app](https://frontend-gse2.vercel.app/)
-2. Create an account
+2. Create an account and verify your email
 3. Add a task the way you'd naturally describe it to a person — include timing and urgency if they matter
 4. Watch the priority and due date get filled in automatically
 
