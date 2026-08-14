@@ -19,7 +19,7 @@ becomes:
 
 - **Task:** Submit the client report
 - **Priority:** High
-- **Due date:** the actual date of next 
+- **Due date:** the actual date of next Friday
 
 No dropdowns. No date picker. You write one sentence, and the system figures out what matters.
 
