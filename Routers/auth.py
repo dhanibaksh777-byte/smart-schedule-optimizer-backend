@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter,Depends,HTTPException,status,Request
 from sqlalchemy.orm import Session
 from database import get_db
@@ -44,10 +43,10 @@ def create_token(data : dict[str,any]):
     token = jwt.encode(payload,SECRETE_KEY,algorithm=ALGORITHIM)
     return token
 
-def create_reset_token(data : dict[str,any]):
+def create_token_with_purpose(data : dict[str,any],purpose : str,expiry_time : int):
     payload = data.copy()
-    Expire_time = datetime.now(timezone.utc) + timedelta(minutes=RESET_ACCESS_TOKEN_EXPIRE)
-    payload.update({"exp" : Expire_time,"purpose": "password_reset"})
+    Expire_time = datetime.now(timezone.utc) + timedelta(minutes=expiry_time)
+    payload.update({"exp" : Expire_time,"purpose": purpose})
     reset_token = jwt.encode(payload,SECRETE_KEY,algorithm=ALGORITHIM)
     return reset_token
 
@@ -70,7 +69,7 @@ def get_current_user(token : str = Depends(Oauth2_scheme),db : Session = Depends
 
 router = APIRouter(prefix="/auth",tags=["Authentication"])
 
-@router.post("/Register",status_code=status.HTTP_201_CREATED,response_model=UserResponse)
+@router.post("/Register",status_code=status.HTTP_201_CREATED)
 @limiter.limit("3/minute")
 def register_user(request : Request,user : CreateUser,db : Session = Depends(get_db)):
     existing_username = db.query(User).filter(User.username == user.username).first()
@@ -85,8 +84,57 @@ def register_user(request : Request,user : CreateUser,db : Session = Depends(get
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return new_user
+    print(f"Debug: user_id created")
+    email_verification_token = create_token_with_purpose({"user_id" : new_user.id},"email verification",15)
+    print(f"token created!")
+    verification_link = f"https://frontend-gse2.vercel.app/verify-email?token={email_verification_token}"
+    html_content = f"""
+<div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; border: 1px solid #e0e0e0; border-radius: 8px;">
+    <h2 style="color: #1a1a1a; margin-bottom: 10px;">Verify Your Email</h2>
+    <p style="color: #444; font-size: 15px; line-height: 1.6;">
+        We received your email for registration. Click the button below to verify your email.
+    </p>
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="{verification_link}" style="display:inline-block; padding:12px 28px; background-color:#2563eb; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:14px;">
+            verify email
+        </a>
+    </div>
+    <p style="color: #666; font-size: 13px; line-height: 1.6;">
+        This link will expire in 15 minutes for security reasons.
+    </p>
+    <p style="color: #666; font-size: 13px; line-height: 1.6;">
+        If you did not try to Register, you can safely ignore this email — your account remains secure.
+    </p>
+    <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
+    <p style="color: #999; font-size: 12px;">
+        AI Task Automator
+    </p>
+</div>
+"""
+    send_email(new_user.email,"Email Verification",html_content)
+    print(f"Debug:sending....")
+    return {
+    "message": "Registration successful! Please check your email to verify your account.",
+    "user": {"id": new_user.id, "username": new_user.username}
+}  
+    
 
+
+@router.get("/verify-email")
+@limiter.limit("10/minute")
+def get_verified(request : Request,token : str,db : Session = Depends(get_db)):
+    decoded_payload = verify_token(token)
+    if decoded_payload.get("purpose") != "email verification":
+        raise HTTPException(status = status.HTTP_401_UNAUTHORIZED,detail="invalid token purpose!")
+    user_id = decoded_payload.get("user_id")
+    db_user = db.query(User).filter(User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND,detail="user not found!")
+    db_user.is_verified = True
+    db.commit()
+    return {"message":"Email Verified Successfully!"}
+
+    
 @router.post("/Login")
 @limiter.limit("5/minute")
 def Login(request : Request,user : UserLogin, db : Session = Depends(get_db)):
@@ -117,7 +165,7 @@ def confirm_reset_token(request : Request,payload :ResetPasswordRequest,db : Ses
 
 
        return {"message" : "password has been reset Successfully!"}
-       
+    
      
 @router.post("/forgot-password")
 @limiter.limit("2/minute")
@@ -127,7 +175,7 @@ def reset_password(request : Request,payload : forgot_password_request,db : Sess
         print(f"no user found for {payload.email}")
     if user:
             print(f"sending email.... to {user.email}")
-            token = create_reset_token({"user_id" : user.id,"purpose": "password reset"})
+            token = create_token_with_purpose({"user_id" : user.id},"password reset",15)
             reset_link =f"https://frontend-gse2.vercel.app/reset-password?token={token}"
             html_content = f"""
 <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; border: 1px solid #e0e0e0; border-radius: 8px;">

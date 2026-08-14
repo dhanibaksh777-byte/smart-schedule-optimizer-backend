@@ -9,7 +9,9 @@ class User(Base):
     username = Column(String,unique=True,nullable=False,index=True)
     email = Column(String,unique=True,nullable=False,index=True)
     password = Column(String)
+    is_verified = Column(Boolean,default=False)
     tasks = relationship("Task",back_populates="owner")
+
 
 
 class Task(Base):
